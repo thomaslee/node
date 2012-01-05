@@ -140,6 +140,7 @@ static bool debug_wait_connect;
 static bool use_debug_agent;
 static const char* eval_string;
 static bool print_eval;
+static const char* boot_script;
 
 static void CheckStatus(uv_timer_t* watcher, int status);
 
@@ -2091,6 +2092,10 @@ Handle<Object> SetupProcessObject(int argc, char *argv[]) {
     process->Set(String::NewSymbol("_print_eval"), Boolean::New(print_eval));
   }
 
+  if (boot_script) {
+    process->Set(String::NewSymbol("_boot_script"), String::New(boot_script));
+  }
+
   size_t size = 2*PATH_MAX;
   char* execPath = new char[size];
   if (uv_exepath(execPath, &size) != 0) {
@@ -2231,6 +2236,7 @@ static void PrintHelp() {
          "Options:\n"
          "  -v, --version        print node's version\n"
          "  -e, --eval script    evaluate script\n"
+         "  -b  --boot script.js execute file before executing the main script\n"
          "  -p, --print          print result of --eval\n"
          "  --v8-options         print v8 command line options\n"
          "  --vars               print various compiled-in variables\n"
@@ -2293,11 +2299,24 @@ static void ParseArgs(int argc, char **argv) {
     } else if (strcmp(arg, "--print") == 0 || strcmp(arg, "-p") == 0) {
       print_eval = true;
       argv[i] = const_cast<char*>("");
+    } else if (strcmp(arg, "--boot") == 0 || strcmp(arg, "-b") == 0) {
+      if (argc <= i + 1) {
+        fprintf(stderr, "Error: --boot requires an argument\n");
+        exit(1);
+      }
+      argv[i++] = const_cast<char*>("");
+      boot_script = argv[i];
+      argv[i] = const_cast<char*>("");
     } else if (strcmp(arg, "--v8-options") == 0) {
       argv[i] = const_cast<char*>("--help");
     } else if (argv[i][0] != '-') {
       break;
     }
+  }
+
+  if (boot_script && eval_string) {
+    fprintf(stderr, "Error: --boot cannot be used with --eval\n");
+    exit(1);
   }
 
   option_end_index = i;

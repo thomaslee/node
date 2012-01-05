@@ -82,6 +82,9 @@
     } else if (process.argv[1]) {
       // make process.argv[1] into a full path
       var path = NativeModule.require('path');
+      if (process._boot_script) {
+          process._boot_script = path.resolve(process._boot_script);
+      }
       process.argv[1] = path.resolve(process.argv[1]);
 
       // If this is a worker in cluster mode, start up the communiction
